@@ -56,6 +56,7 @@ local Toggle = Tabs.Farming:AddToggle("Blow",
 local rifteggs = {}
 local uniqueRifts = {}
 
+-- Iterate over the Rifts to populate the dropdown options
 for _, item in pairs(workspace.Rendered.Rifts:GetChildren()) do
     if item.Name ~= "golden-chest" and item.Name ~= "royal-chest" and item.Name ~= "gift-rift" then
         if not uniqueRifts[item.Name] then
@@ -65,12 +66,59 @@ for _, item in pairs(workspace.Rendered.Rifts:GetChildren()) do
     end
 end
 
+local selectedRift = nil  -- Variable to store the selected Rift name
+local tweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Dropdown to select the Rift
 local Dropdown = Tabs.Rifts:AddDropdown("Dropdown", {
     Title = "AutoFarm Rifts",
     Description = "Select Rifts You Want To Auto Hatch",
     Values = rifteggs,
     Multi = false,
     Default = 0,
+})
+
+-- Update the selected Rift when the dropdown value changes
+Dropdown.OnChanged = function(selected)
+    selectedRift = selected
+    print("Player selected Rift: " .. selectedRift)
+end
+
+-- Toggle to start auto-farming and tween the player to the selected Rift
+local Toggle = Tabs.Rifts:AddToggle("rifts", {
+    Title = "AutoFarm Rifts",
+    Description = "AutoFarm Selected Rifts",
+    Default = false,
+    Callback = function(state)
+        if state then
+            if selectedRift then
+                -- Find the Display part of the selected Rift
+                local selectedRiftObject = workspace.Rendered.Rifts:FindFirstChild(selectedRift)
+                if selectedRiftObject then
+                    local displayPart = selectedRiftObject:FindFirstChild("Display")
+                    if displayPart then
+                        -- Tween the player to the selected Rift's Display part
+                        local goal = displayPart.Position
+                        local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                        local tween = tweenService:Create(humanoidRootPart, tweenInfo, {Position = goal})
+                        tween:Play()
+                        print("Tweening to Rift: " .. selectedRift)
+                    else
+                        print("Display part not found for Rift: " .. selectedRift)
+                    end
+                else
+                    print("Rift not found: " .. selectedRift)
+                end
+            else
+                print("No Rift selected!")
+            end
+        else
+            print("Toggle Off")
+        end
+    end
 })
 
 --Config Saving
