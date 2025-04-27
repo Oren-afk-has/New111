@@ -59,14 +59,45 @@ local excluded = {
     ["royal-chest"] = true,
 }
 
+-- Create the dropdown first with empty Values (we'll fill them in)
 local MultiDropdown = Tabs.Rifts:AddDropdown("MultiDropdown", {
     Title = "Rifts",
     Description = "Select What Rift You Want To Hatch",
-    Values = {},
+    Values = {}, -- Empty for now
     Multi = true,
     Default = {},
 })
 
+-- Create the toggle for moving to the rift
+local MoveToRiftToggle = Tabs.Rifts:AddToggle("MoveToRiftToggle", {
+    Title = "Move To Selected Rift",
+    Default = false,
+    Callback = function(state)
+        if state then
+            -- Get the selected rift name from the dropdown
+            local selectedRift = MultiDropdown:GetValue()
+            if selectedRift and selectedRift[1] then -- Make sure there is a selected rift
+                -- Get the rift's position in the workspace
+                local rift = workspace.Rendered.Rifts:FindFirstChild(selectedRift[1])
+                if rift then
+                    -- Tween the player to the selected rift's position
+                    local player = game.Players.LocalPlayer
+                    local character = player.Character or player.CharacterAdded:Wait()
+                    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+                    
+                    local tweenService = game:GetService("TweenService")
+                    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) -- 2-second tween
+                    local goal = {Position = rift.Position + Vector3.new(0, 3, 0)} -- Adjust the height slightly for the player
+
+                    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+                    tween:Play()
+                end
+            end
+        end
+    end
+})
+
+-- Collect rift names
 local riftNames = {}
 for _, rift in ipairs(workspace.Rendered.Rifts:GetChildren()) do
     if not excluded[rift.Name] then
@@ -74,80 +105,12 @@ for _, rift in ipairs(workspace.Rendered.Rifts:GetChildren()) do
     end
 end
 
-MultiDropdown:SetValues(riftNames)
-
-local Toggle = Tabs.Rifts:AddToggle("Rift", {
-    Title = "AutoFarm Rift",
-    Description = "AutoFarms Selected Rift",
-    Default = false,
-    Callback = function(state)
-        if state then
-            -- Start autofarming (Tween to selected Rift)
-            local selectedRifts = MultiDropdown.Values  -- This is the property storing selected values
-            
-            for _, riftName in ipairs(selectedRifts) do
-                local rift = workspace.Rendered.Rifts:FindFirstChild(riftName)
-                if rift then
-                    local sign = rift:FindFirstChild("Sign")
-                    if sign then
-                        -- Iterate through all parts inside the "Sign" model
-                        local signPart = nil
-                        for _, child in pairs(sign:GetChildren()) do
-                            if child:IsA("BasePart") then
-                                signPart = child
-                                break
-                            end
-                        end
-
-                        if signPart then
-                            -- Debug log to confirm part and position
-                            print("Tweening to Sign Part:", signPart.Name, "Position:", signPart.Position)
-                            
-                            local player = game.Players.LocalPlayer
-                            local char = player.Character
-                            if char then
-                                local hrp = char:WaitForChild("HumanoidRootPart")
-                                if hrp then
-                                    -- Debug log to confirm HumanoidRootPart
-                                    print("HumanoidRootPart found:", hrp.Position)
-
-                                    local tweenService = game:GetService("TweenService")
-                                    local goal = {Position = signPart.Position}
-                                    local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-                                    local tween = tweenService:Create(hrp, tweenInfo, goal)
-
-                                    -- Debug log to confirm tween creation
-                                    print("Tween created with goal:", goal.Position)
-                                    tween:Play()
-
-                                    -- Add event to detect when tween is completed
-                                    tween.Completed:Connect(function(status)
-                                        if status == Enum.PlaybackState.Completed then
-                                            print("Tween completed successfully!")
-                                        end
-                                    end)
-                                else
-                                    print("HumanoidRootPart not found!")
-                                end
-                            else
-                                print("Character not found!")
-                            end
-                        else
-                            print("No valid part found inside Sign!")
-                        end
-                    else
-                        print("No Sign found for rift:", riftName)
-                    end
-                else
-                    print("Rift not found:", riftName)
-                end
-            end
-        else
-            -- Toggle off (Stop tweens or reset to original position)
-            print("Toggle Off - Stopping all tweens")
-        end
-    end
-})
+-- Only update the dropdown if there are valid rift names
+if #riftNames > 0 then
+    MultiDropdown:SetValues(riftNames)
+else
+    MultiDropdown:SetValues({"No rifts available"}) -- Placeholder if no rifts found
+end
 
 --Config Saving
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
