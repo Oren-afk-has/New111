@@ -68,36 +68,7 @@ local MultiDropdown = Tabs.Rifts:AddDropdown("MultiDropdown", {
     Default = {},
 })
 
--- Create the toggle for moving to the rift
-local MoveToRiftToggle = Tabs.Rifts:AddToggle("MoveToRiftToggle", {
-    Title = "Move To Selected Rift",
-    Default = false,
-    Callback = function(state)
-        if state then
-            -- Get the selected rift name from the dropdown
-            local selectedRift = MultiDropdown:GetValue()
-            if selectedRift and selectedRift[1] then -- Make sure there is a selected rift
-                -- Get the rift's position in the workspace
-                local rift = workspace.Rendered.Rifts:FindFirstChild(selectedRift[1])
-                if rift then
-                    -- Tween the player to the selected rift's position
-                    local player = game.Players.LocalPlayer
-                    local character = player.Character or player.CharacterAdded:Wait()
-                    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-                    
-                    local tweenService = game:GetService("TweenService")
-                    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) -- 2-second tween
-                    local goal = {Position = rift.Position + Vector3.new(0, 3, 0)} -- Adjust the height slightly for the player
-
-                    local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
-                    tween:Play()
-                end
-            end
-        end
-    end
-})
-
--- Collect rift names
+-- Collect rift names (done only once)
 local riftNames = {}
 for _, rift in ipairs(workspace.Rendered.Rifts:GetChildren()) do
     if not excluded[rift.Name] then
@@ -105,12 +76,54 @@ for _, rift in ipairs(workspace.Rendered.Rifts:GetChildren()) do
     end
 end
 
--- Only update the dropdown if there are valid rift names
+-- Update the dropdown's Values
 if #riftNames > 0 then
     MultiDropdown:SetValues(riftNames)
 else
-    MultiDropdown:SetValues({"No rifts available"}) -- Placeholder if no rifts found
+    MultiDropdown:SetValues({"No rifts available"})
 end
+
+local MoveToRiftToggle = Tabs.Rifts:AddToggle("MoveToRiftToggle", {
+    Title = "Move To Selected Rift",
+    Default = false,
+    Callback = function(state)
+        if state then
+            local selectedRift = MultiDropdown:GetValue()
+            if selectedRift and selectedRift[1] then
+                local rift = workspace.Rendered.Rifts:FindFirstChild(selectedRift[1])
+                if rift and rift:FindFirstChild("Display") then
+                    local player = game.Players.LocalPlayer
+                    local tweenService = game:GetService("TweenService")
+                    local riftDisplay = rift.Display
+                    local speed = 750
+
+                    if player.Character then
+                        local character = player.Character
+                        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+                        local distance = (riftDisplay.Position - humanoidRootPart.Position).Magnitude
+                        local duration = distance / speed
+                        
+                        local tweenInfo = TweenInfo.new(
+                            duration,
+                            Enum.EasingStyle.Linear,
+                            Enum.EasingDirection.InOut,
+                            0,
+                            false,
+                            0
+                        )
+                        
+                        local goal = { CFrame = riftDisplay.CFrame }
+                        local tween = tweenService:Create(humanoidRootPart, tweenInfo, goal)
+                        
+                        tween:Play()
+                    end
+                end
+            end
+        end
+    end
+})
+
+MoveToRiftToggle:Update()
 
 --Config Saving
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
