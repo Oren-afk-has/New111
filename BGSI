@@ -1,0 +1,158 @@
+--Source
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+--Window
+local Window = Fluent:CreateWindow({
+    Title = "Fluent " .. Fluent.Version,
+    SubTitle = "By Oren",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+--Tabs
+local Tabs = {
+    Home = Window:AddTab({ Title = "Home", Icon = "" }),
+    Farming = Window:AddTab({ Title = "Farming", Icon = "" }),
+    Hatching = Window:AddTab({ Title = "Hatching", Icon = "" }),
+    Pets = Window:AddTab({ Title = "Pets", Icon = "" }),
+    Rifts = Window:AddTab({ Title = "Rifts", Icon = "" }),
+    Quests = Window:AddTab({ Title = "Quests", Icon = "" }),
+    Merchant = Window:AddTab({ Title = "Merchants", Icon = "" }),
+    Potions = Window:AddTab({ Title = "Potions", Icon = "" }),
+    Teleport = Window:AddTab({ Title = "Teleport", Icon = "" }),
+    Others = Window:AddTab({ Title = "Others", Icon = "" }),
+    Settings = Window:AddTab({ Title = "Config", Icon = "" }),
+}
+
+--Credits
+local Section = Tabs.Home:AddSection("Credits")
+Section:AddParagraph({
+    Title = "This Script Is A Work In Progess I Dunno If This Will Ever Be \nRealeased"
+})
+
+-- Farming
+local Section = Tabs.Farming:AddSection("Blowing")
+local Toggle = Tabs.Farming:AddToggle("Blow", 
+{
+    Title = "Auto Blow Bubbles", 
+    Description = "Automatically Blows Bubbles For You",
+    Default = false,
+    Callback = function(state)
+        if state then
+            while state do
+                local args = {
+                    [1] = "BlowBubble"
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event"):FireServer(unpack(args))
+                task.wait()
+            end
+        end
+    end
+})
+
+local excluded = {
+    ["gift-rift"] = true,
+    ["golden-chest"] = true,
+    ["royal-chest"] = true,
+}
+
+local MultiDropdown = Tabs.Rifts:AddDropdown("MultiDropdown", {
+    Title = "Rifts",
+    Description = "Select What Rift You Want To Hatch",
+    Values = {},
+    Multi = true,
+    Default = {},
+})
+
+local riftNames = {}
+for _, rift in ipairs(workspace.Rendered.Rifts:GetChildren()) do
+    if not excluded[rift.Name] then
+        table.insert(riftNames, rift.Name)
+    end
+end
+
+MultiDropdown:SetValues(riftNames)
+
+local Toggle = Tabs.Rifts:AddToggle("Rift", {
+    Title = "AutoFarm Rift",
+    Description = "AutoFarms Selected Rift",
+    Default = false,
+    Callback = function(state)
+        if state then
+            -- Start autofarming (Tween to selected Rift)
+            local selectedRifts = MultiDropdown.Values  -- This is the property storing selected values
+            
+            for _, riftName in ipairs(selectedRifts) do
+                local rift = workspace.Rendered.Rifts:FindFirstChild(riftName)
+                if rift then
+                    local sign = rift:FindFirstChild("Sign")
+                    if sign then
+                        -- Iterate through all parts inside the "Sign" model
+                        local signPart = nil
+                        for _, child in pairs(sign:GetChildren()) do
+                            if child:IsA("BasePart") then
+                                signPart = child
+                                break
+                            end
+                        end
+
+                        if signPart then
+                            -- Debug log to confirm part and position
+                            print("Tweening to Sign Part:", signPart.Name, "Position:", signPart.Position)
+                            
+                            local player = game.Players.LocalPlayer
+                            local char = player.Character
+                            if char then
+                                local hrp = char:WaitForChild("HumanoidRootPart")
+                                if hrp then
+                                    -- Debug log to confirm HumanoidRootPart
+                                    print("HumanoidRootPart found:", hrp.Position)
+
+                                    local tweenService = game:GetService("TweenService")
+                                    local goal = {Position = signPart.Position}
+                                    local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+                                    local tween = tweenService:Create(hrp, tweenInfo, goal)
+
+                                    -- Debug log to confirm tween creation
+                                    print("Tween created with goal:", goal.Position)
+                                    tween:Play()
+
+                                    -- Add event to detect when tween is completed
+                                    tween.Completed:Connect(function(status)
+                                        if status == Enum.PlaybackState.Completed then
+                                            print("Tween completed successfully!")
+                                        end
+                                    end)
+                                else
+                                    print("HumanoidRootPart not found!")
+                                end
+                            else
+                                print("Character not found!")
+                            end
+                        else
+                            print("No valid part found inside Sign!")
+                        end
+                    else
+                        print("No Sign found for rift:", riftName)
+                    end
+                else
+                    print("Rift not found:", riftName)
+                end
+            end
+        else
+            -- Toggle off (Stop tweens or reset to original position)
+            print("Toggle Off - Stopping all tweens")
+        end
+    end
+})
+
+--Config Saving
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
